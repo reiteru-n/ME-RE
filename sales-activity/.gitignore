@@ -1,0 +1,5 @@
+# 実データ・設定は個人情報を含むためコミットしない
+data/*
+!data/.gitkeep
+config.json
+__pycache__/

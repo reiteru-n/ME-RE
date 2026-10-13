@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "営業アクション集計データ",
+  "description": "collector/aggregate.py が出力し、dashboard/index.html が読み込む形式。",
+  "type": "object",
+  "required": ["members", "daily"],
+  "properties": {
+    "version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "timezone": { "type": "string", "examples": ["Asia/Tokyo"] },
+    "members": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "team": { "type": "string" },
+          "target": { "type": "number", "description": "週あたりの商談目標件数" }
+        }
+      }
+    },
+    "daily": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["member", "date"],
+        "properties": {
+          "member": { "type": "string", "description": "members[].id" },
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "現地日付" },
+          "mail_out": { "type": "integer", "description": "社外宛て送信メール数" },
+          "mail_in": { "type": "integer", "description": "社外からの受信メール数" },
+          "slack_deal": { "type": "integer", "description": "案件チャンネル・Slackコネクトへの投稿数" },
+          "slack_other": { "type": "integer", "description": "その他（社内）チャンネルへの投稿数" },
+          "meetings": { "type": "integer" },
+          "proposals": { "type": "integer" },
+          "quotes": { "type": "integer" },
+          "new_contacts": { "type": "integer", "description": "初めて接点を持った顧客数" },
+          "reply_n": { "type": "integer", "description": "返信まで追跡できた受信メール数" },
+          "reply_min": { "type": "integer", "description": "reply_n 件の初回返信までの分数の合計" },
+          "accounts": { "type": "array", "items": { "type": "string" }, "description": "その日に接点のあった顧客キー（既定はハッシュ）" },
+          "hours": { "type": "array", "items": { "type": "integer" }, "minItems": 24, "maxItems": 24, "description": "0〜23時台ごとのアクション数" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "timezone": "Asia/Tokyo",
+  "data_dir": "data",
+  "internal_domains": ["menou.co.jp"],
+  "ignore_domains": ["gmail.com", "outlook.jp", "icloud.com"],
+  "deal_channel_prefixes": ["deal-", "案件-", "cust-"],
+  "channel_accounts": { "proj-example-renewal": "example.co.jp" },
+  "members": [
+    { "id": "m1", "name": "営業 太郎", "team": "エンタープライズ", "email": "taro.eigyo@menou.co.jp", "target": 5 },
+    { "id": "m2", "name": "営業 花子", "team": "インサイドセールス", "email": "hanako.eigyo@menou.co.jp", "slack_id": "U00000000", "target": 8 }
+  ]
+}

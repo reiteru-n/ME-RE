@@ -1,0 +1,1022 @@
+<title>営業アクション分析</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap">
+<style>
+/* Layout: フィルタ1行 → KPI帯 → 「量 → 成果 → 効率 → 時間帯 → ファネル」の2カラム → メンバー表 → 振り返り。上から下へ「何をどれだけ → どう効いたか → 次に何を変えるか」の順に読む */
+:root {
+  --bg: #f4f6f7;
+  --surface: #fcfcfb;
+  --surface-2: #eceff1;
+  --line: #dde1e4;
+  --fg: #15191c;
+  --fg-2: #4b5258;
+  --fg-3: #747b82;
+  --accent: #1d5f8a;
+  --accent-ink: #ffffff;
+  --accent-wash: #e3eef6;
+
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good-ink: #006300;
+  --warning-ink: #855600;
+  --serious-ink: #9e3f17;
+  --critical-ink: #ad2a2a;
+
+  --q0: #eceff1;
+  --q1: #cde2fb; --q2: #9ec5f4; --q3: #6da7ec; --q4: #3987e5; --q5: #256abf; --q6: #184f95; --q7: #0d366b;
+  --o1: #86b6ef; --o2: #5598e7; --o3: #2a78d6; --o4: #1c5cab;
+
+  --font-display: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-body: "BIZ UDPGothic", "Hiragino Sans", "Meiryo", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111416; --surface: #1a1d20; --surface-2: #25292d; --line: #31363b;
+    --fg: #eef0f1; --fg-2: #b8bec3; --fg-3: #8a9198;
+    --accent: #62aede; --accent-ink: #0b1720; --accent-wash: #1b2c38;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    --good-ink: #58c958; --warning-ink: #fab219; --serious-ink: #ef9370; --critical-ink: #f08080;
+    --q0: #25292d;
+    --q1: #16304d; --q2: #184f95; --q3: #1c5cab; --q4: #256abf; --q5: #3987e5; --q6: #6da7ec; --q7: #b7d3f6;
+    --o1: #184f95; --o2: #256abf; --o3: #3987e5; --o4: #6da7ec;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111416; --surface: #1a1d20; --surface-2: #25292d; --line: #31363b;
+  --fg: #eef0f1; --fg-2: #b8bec3; --fg-3: #8a9198;
+  --accent: #62aede; --accent-ink: #0b1720; --accent-wash: #1b2c38;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  --good-ink: #58c958; --warning-ink: #fab219; --serious-ink: #ef9370; --critical-ink: #f08080;
+  --q0: #25292d;
+  --q1: #16304d; --q2: #184f95; --q3: #1c5cab; --q4: #256abf; --q5: #3987e5; --q6: #6da7ec; --q7: #b7d3f6;
+  --o1: #184f95; --o2: #256abf; --o3: #3987e5; --o4: #6da7ec;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.6; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 20px 56px; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 24px; font-weight: 700; letter-spacing: 0.01em; }
+h2 { font-size: 16px; font-weight: 700; }
+.num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--fg-3); }
+.eyebrow { font-size: 11px; letter-spacing: 0.08em; color: var(--fg-3); text-transform: uppercase; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.top .titleblock { display: grid; gap: 4px; min-width: 0; }
+.top p { margin: 0; color: var(--fg-2); max-width: 64ch; }
+.source-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--accent-wash); color: var(--fg); border: 1px solid var(--line); }
+.source-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; border-bottom: 1px solid var(--line); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--fg-2); padding: 6px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+select, .btn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 8px; padding: 6px 10px; }
+.btn { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { border-color: var(--fg-3); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+button:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-visible, th[data-sort]:focus-visible, tr[tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.filters .spacer { flex: 1 1 auto; }
+.filters label { font-size: 12px; color: var(--fg-3); display: inline-flex; align-items: center; gap: 6px; }
+.period-text { font-size: 12px; color: var(--fg-3); }
+
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.kpi { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.kpi .label { font-size: 12px; color: var(--fg-2); }
+.kpi .value { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 500; line-height: 1.25; letter-spacing: -0.01em; }
+.kpi .value small { font-size: 13px; color: var(--fg-3); margin-left: 2px; }
+.delta { font-size: 12px; font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.delta.up-good, .delta.down-good { color: var(--good-ink); }
+.delta.up-bad, .delta.down-bad { color: var(--critical-ink); }
+.delta.flat { color: var(--fg-3); }
+.kpi .hint { font-size: 11px; color: var(--fg-3); }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px 14px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.panel header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.panel header p { margin: 0; font-size: 12px; color: var(--fg-3); }
+.chart { width: 100%; min-height: 200px; position: relative; }
+.chart svg { display: block; overflow: visible; }
+.chart text { fill: var(--fg-3); font-family: var(--font-body); font-size: 11px; }
+.chart .tick { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { stroke: var(--fg-3); stroke-width: 1; opacity: 0.5; }
+.chart [data-tip] { cursor: default; }
+.chart .hit:hover + .mark, .chart .mark:hover { opacity: 0.82; }
+.chart .label-strong { fill: var(--fg); font-size: 12px; }
+.chart .quad { fill: var(--fg-3); font-size: 11px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--fg-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.legend i.line { height: 2px; width: 14px; border-radius: 1px; }
+.scale { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--fg-3); }
+.scale i { width: 16px; height: 10px; display: inline-block; }
+
+.tooltip { position: fixed; pointer-events: none; z-index: 50; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); min-width: 140px; max-width: 260px; }
+.tooltip .tt-title { color: var(--fg-3); font-size: 11px; margin-bottom: 4px; }
+.tooltip .tt-row { display: grid; grid-template-columns: 14px auto 1fr; align-items: center; gap: 6px; }
+.tooltip .tt-row b { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-weight: 500; font-size: 13px; }
+.tooltip .tt-row span { color: var(--fg-2); }
+.tooltip .tt-key { height: 2px; width: 12px; border-radius: 1px; }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 9px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { font-weight: 700; font-size: 12px; color: var(--fg-2); background: var(--surface); position: sticky; top: 0; }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[data-sort]::after { content: ""; display: inline-block; width: 10px; color: var(--fg-3); }
+th[aria-sort="descending"]::after { content: "▼"; font-size: 9px; margin-left: 3px; }
+th[aria-sort="ascending"]::after { content: "▲"; font-size: 9px; margin-left: 3px; }
+th:first-child, td:first-child { text-align: left; }
+td { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+td.name { font-family: var(--font-body); }
+td.name b { font-weight: 700; display: block; }
+td.name small { color: var(--fg-3); font-size: 11px; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr.selected { background: var(--accent-wash); }
+.spark { vertical-align: middle; margin-left: 8px; }
+
+.pill { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; font-family: var(--font-body); font-size: 11px; font-weight: 700; border: 1px solid; }
+.pill::before { font-size: 9px; }
+.pill.good { color: var(--good-ink); border-color: var(--good); }
+.pill.good::before { content: "●"; color: var(--good); }
+.pill.warning { color: var(--warning-ink); border-color: var(--warning); }
+.pill.warning::before { content: "▲"; color: var(--warning); }
+.pill.serious { color: var(--serious-ink); border-color: var(--serious); }
+.pill.serious::before { content: "◆"; color: var(--serious); }
+.pill.critical { color: var(--critical-ink); border-color: var(--critical); }
+.pill.critical::before { content: "■"; color: var(--critical); }
+
+.retro { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; }
+.insights { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.insights li { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.insights li:last-child { border-bottom: 0; }
+.insights li > .pill { align-self: start; margin-top: 2px; }
+.insights .who { font-size: 12px; color: var(--fg-3); }
+.insights .t { font-weight: 700; }
+.insights .d { color: var(--fg-2); font-size: 13px; }
+.insights .a { font-size: 13px; color: var(--fg); background: var(--surface-2); border-radius: 6px; padding: 6px 10px; margin-top: 4px; }
+.insights .a::before { content: "次の一手："; color: var(--fg-3); }
+.insights .body { grid-column: 2; display: grid; gap: 2px; min-width: 0; }
+.kpt { display: grid; gap: 10px; }
+.kpt label { display: grid; gap: 4px; font-size: 12px; color: var(--fg-2); font-weight: 700; }
+.kpt label span { font-weight: 400; color: var(--fg-3); }
+textarea { font: inherit; font-size: 13px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 70px; resize: vertical; width: 100%; }
+.kpt .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.toast { font-size: 12px; color: var(--good-ink); }
+
+details.howto { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 18px; }
+details.howto summary { cursor: pointer; font-family: var(--font-display); font-weight: 700; }
+details.howto ol { padding-left: 1.4em; margin: 10px 0 0; display: grid; gap: 6px; max-width: 80ch; color: var(--fg-2); }
+details.howto pre { background: var(--surface-2); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-family: var(--font-data); font-size: 12px; margin: 6px 0 0; color: var(--fg); }
+.privacy { font-size: 12px; color: var(--fg-3); max-width: 90ch; }
+.empty { padding: 32px 0; text-align: center; color: var(--fg-3); }
+.error { color: var(--critical-ink); font-size: 12px; }
+
+@media (max-width: 1080px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .grid2, .retro { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) {
+  .wrap { padding-inline: 16px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi .value { font-size: 22px; }
+  .filters { position: static; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="titleblock">
+      <span class="eyebrow">menou scope ／ Sales Activity</span>
+      <h1>営業アクション分析</h1>
+      <p>SlackとOutlookの送受信ログから、営業メンバーごとの行動量・顧客接点・成果への転換を週次で集計します。量を見て、効率を比べ、振り返りで次の一手を決めるためのページです。</p>
+    </div>
+    <span class="source-chip" id="sourceChip"><span class="dot"></span><span id="sourceText">サンプルデータ（架空のメンバー）</span></span>
+  </header>
+
+  <div class="filters" role="toolbar" aria-label="表示条件">
+    <div class="seg" id="periodSeg" aria-label="期間">
+      <button type="button" data-weeks="4" aria-pressed="false">直近4週</button>
+      <button type="button" data-weeks="8" aria-pressed="true">直近8週</button>
+      <button type="button" data-weeks="12" aria-pressed="false">直近12週</button>
+    </div>
+    <label for="teamSel">チーム <select id="teamSel"></select></label>
+    <label for="memberSel">メンバー <select id="memberSel"></select></label>
+    <span class="period-text num" id="periodText"></span>
+    <span class="spacer"></span>
+    <label class="btn" for="fileIn">集計データを読み込む<input id="fileIn" type="file" accept=".json,application/json" hidden></label>
+    <button type="button" class="btn" id="resetBtn" hidden>サンプルに戻す</button>
+  </div>
+  <div class="error" id="loadError" hidden></div>
+
+  <section class="kpis" id="kpis" aria-label="主要指標"></section>
+
+  <div class="grid2">
+    <section class="panel">
+      <header><h2>週次アクション量</h2><p>社外メール送信とSlack投稿の件数</p></header>
+      <div class="legend" id="volLegend"></div>
+      <div class="chart" id="volChart"></div>
+    </section>
+    <section class="panel">
+      <header><h2>成果につながる行動</h2><p>商談・提案・見積の週次件数</p></header>
+      <div class="legend" id="outLegend"></div>
+      <div class="chart" id="outChart"></div>
+    </section>
+    <section class="panel">
+      <header><h2>効率マップ</h2><p>横：週あたりアクション量 ／ 縦：100アクションあたりの商談・提案・見積</p></header>
+      <div class="chart" id="effChart"></div>
+    </section>
+    <section class="panel">
+      <header><h2>活動時間帯</h2><p>曜日×時刻ごとのアクション件数（6時〜23時）</p></header>
+      <div class="scale" id="heatScale"></div>
+      <div class="chart" id="heatChart"></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="panel">
+      <header><h2>行動ファネル</h2><p>期間内の件数と、ひとつ前の段階からの比率</p></header>
+      <div class="chart" id="funnelChart" style="min-height:170px"></div>
+    </section>
+    <section class="panel">
+      <header><h2>チャネル別の内訳</h2><p>顧客向けの行動と社内向けの行動の比率</p></header>
+      <div class="chart" id="mixChart" style="min-height:170px"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <header><h2>メンバー別スコアカード</h2><p>行をクリックするとそのメンバーで全体を絞り込みます。見出しで並べ替え。</p></header>
+    <div class="table-wrap"><table id="memberTable" aria-label="メンバー別の指標"></table></div>
+  </section>
+
+  <section class="retro">
+    <section class="panel">
+      <header><h2>今期の気づき</h2><p id="insightScope">前の期間とチーム平均を比べて自動で抽出</p></header>
+      <ul class="insights" id="insights"></ul>
+    </section>
+    <section class="panel">
+      <header><h2>振り返りメモ（KPT）</h2><p>週次1on1・チーム会で使う下書き</p></header>
+      <div class="kpt">
+        <label for="kptKeep">Keep <span>続けること</span><textarea id="kptKeep" placeholder="例：初回返信を1時間以内に返せた案件は商談化が早かった"></textarea></label>
+        <label for="kptProblem">Problem <span>うまくいかなかったこと</span><textarea id="kptProblem" placeholder="例：見積作成で社内調整が長引き、夕方以降の作業が増えた"></textarea></label>
+        <label for="kptTry">Try <span>次に試すこと</span><textarea id="kptTry"></textarea></label>
+        <div class="row">
+          <button type="button" class="btn primary" id="copyBtn">Slack投稿用にコピー</button>
+          <button type="button" class="btn" id="fillTryBtn">気づきからTryを下書き</button>
+          <span class="toast" id="copyToast" role="status" aria-live="polite"></span>
+        </div>
+        <textarea id="copyFallback" readonly hidden aria-label="コピー用テキスト"></textarea>
+      </div>
+    </section>
+  </section>
+
+  <details class="howto">
+    <summary>実データの取り込み方法と指標の定義</summary>
+    <ol>
+      <li><b>収集</b>：リポジトリの <code>sales-activity/collector/</code> で Slack と Outlook（Microsoft Graph）からメタデータのみを取得します。本文は保存しません。
+        <pre>python collector/slack_collector.py   --config config.json --since 2026-07-01
+python collector/outlook_collector.py --config config.json --since 2026-07-01
+python collector/aggregate.py         --config config.json --out data/activity.json</pre></li>
+      <li><b>読み込み</b>：上の「集計データを読み込む」で <code>data/activity.json</code> を選びます。ファイルはこのブラウザ内でだけ処理され、どこにも送信されません。</li>
+      <li><b>指標</b>：アクション＝社外メール送信＋Slack投稿。社外比率＝（社外メール＋案件チャンネル投稿）÷アクション。返信時間＝顧客からのメール受信から同スレッドの初回返信までの分数。時間外＝平日9時前・18時以降と土日。商談・提案・見積はカレンダー招待と件名・投稿のキーワード分類で判定します。</li>
+    </ol>
+    <p class="privacy">個人の行動データを扱うため、評価・査定の直接材料にはせず、本人と上長の振り返りと業務改善のために使う前提で設計しています。運用前に対象メンバーへの説明と同意取得を行ってください。</p>
+  </details>
+</div>
+
+<div class="tooltip" id="tooltip" hidden></div>
+
+<script>
+(() => {
+"use strict";
+
+// ---------- utilities ----------
+const $ = (s) => document.querySelector(s);
+const DAY = 864e5;
+const WD = ["日", "月", "火", "水", "木", "金", "土"];
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const iso = (t) => new Date(t).toISOString().slice(0, 10);
+const parseIso = (s) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+const md = (t) => { const d = new Date(t); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+const fmtInt = (n) => Math.round(n).toLocaleString("ja-JP");
+const fmtPct = (r) => (isFinite(r) ? `${Math.round(r * 100)}%` : "—");
+const fmtMin = (m) => {
+  if (!isFinite(m)) return "—";
+  m = Math.round(m);
+  if (m < 60) return `${m}分`;
+  const h = Math.floor(m / 60), mm = m % 60;
+  return mm ? `${h}時間${mm}分` : `${h}時間`;
+};
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } },
+};
+// 4分割の目盛りが整数のきりのよい値になる上限
+function niceMax(v) {
+  if (v <= 0) return 4;
+  const q = v / 4, p = Math.pow(10, Math.floor(Math.log10(q)));
+  const steps = p >= 10 ? [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10] : [1, 2, 3, 4, 5, 6, 8, 10];
+  for (const m of steps) if (m * p >= q) return Math.max(4, m * p * 4);
+  return 40 * p;
+}
+// 散布図用：下限を切りのよい値に丸めた [min, max]
+function niceRange(lo, hi) {
+  const span = Math.max(hi - lo, Math.abs(hi) * 0.1, 1);
+  const step = niceMax(span * 1.2) / 4;
+  const a = Math.max(0, Math.floor((lo - span * 0.1) / step) * step);
+  return [a, a + step * Math.ceil((hi + span * 0.08 - a) / step / 4) * 4, step];
+}
+function median(arr) {
+  const a = arr.filter(isFinite).sort((x, y) => x - y);
+  if (!a.length) return NaN;
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+// ---------- sample data (fictional) ----------
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function generateSample() {
+  const rnd = mulberry32(20261013);
+  const pois = (lam) => { const L = Math.exp(-lam); let k = 0, p = 1; do { k++; p *= rnd(); } while (p > L); return k - 1; };
+  const members = [
+    { id: "m1", name: "青木 遥", team: "エンタープライズ", target: 5, vol: 1.2, eff: 0.95, reply: 50, late: 0.2, inner: 1.1, trend: 0 },
+    { id: "m2", name: "石田 蓮", team: "エンタープライズ", target: 5, vol: 0.85, eff: 1.4, reply: 30, late: 0.06, inner: 0.8, trend: 0.1 },
+    { id: "m3", name: "上野 美咲", team: "エンタープライズ", target: 5, vol: 1.0, eff: 1.05, reply: 140, late: 0.1, inner: 1.0, trend: 0 },
+    { id: "m4", name: "岡本 大輝", team: "ミッドマーケット", target: 6, vol: 1.35, eff: 0.6, reply: 65, late: 0.3, inner: 1.7, trend: -0.35 },
+    { id: "m5", name: "加藤 さくら", team: "ミッドマーケット", target: 6, vol: 0.95, eff: 1.2, reply: 25, late: 0.08, inner: 0.9, trend: 0.05 },
+    { id: "m6", name: "木村 翔太", team: "ミッドマーケット", target: 6, vol: 0.7, eff: 0.9, reply: 170, late: 0.12, inner: 1.0, trend: 0.45 },
+    { id: "m7", name: "小林 葵", team: "インサイドセールス", target: 8, vol: 1.6, eff: 0.75, reply: 15, late: 0.05, inner: 0.6, trend: 0 },
+    { id: "m8", name: "斉藤 陸", team: "インサイドセールス", target: 8, vol: 1.1, eff: 1.0, reply: 40, late: 0.22, inner: 1.2, trend: -0.1 },
+  ];
+  const end = Date.UTC(2026, 9, 9);
+  const days = 168;
+  const daily = [];
+  for (const m of members) {
+    for (let i = days - 1; i >= 0; i--) {
+      const t = end - i * DAY;
+      const wd = new Date(t).getUTCDay();
+      const weekend = wd === 0 || wd === 6;
+      if (weekend && rnd() > 0.22) continue;
+      const base = weekend ? 0.15 : 1;
+      const pos = (days - 1 - i) / (days - 1);
+      const tf = 1 + m.trend * (pos - 0.5);
+      const n = () => 0.7 + rnd() * 0.6;
+      const mail_out = Math.round(13 * m.vol * base * n() * tf);
+      const mail_in = Math.round(mail_out * (0.7 + rnd() * 0.3));
+      const slack_deal = Math.round(7 * base * n() * (0.6 + m.vol * 0.35) * tf);
+      const slack_other = Math.round(9 * base * n() * m.inner);
+      const meetLam = 1.05 * Math.sqrt(m.vol) * base * tf * (m.target / 6);
+      const meetings = pois(meetLam);
+      const proposals = pois(meetLam * 0.45 * m.eff);
+      const quotes = pois(meetLam * 0.27 * m.eff * m.eff);
+      const new_contacts = pois(1.7 * m.vol * base * tf);
+      const reply_n = Math.round(mail_in * 0.72);
+      const reply_min = Math.round(reply_n * m.reply * (0.6 + rnd() * 0.8) * (1 - m.trend * (pos - 0.5) * 0.6));
+      const accounts = new Set();
+      const touch = Math.max(1, Math.round(mail_out / 3));
+      for (let k = 0; k < touch; k++) accounts.add(`${m.id}-a${Math.floor(Math.pow(rnd(), 1.6) * 48)}`);
+      const hours = Array(24).fill(0);
+      const total = mail_out + slack_deal + slack_other;
+      for (let k = 0; k < total; k++) {
+        let h;
+        if (weekend) h = 10 + Math.floor(rnd() * 8);
+        else {
+          const r = rnd();
+          if (r < m.late) h = 18 + Math.floor(Math.pow(rnd(), 1.4) * 5);
+          else if (r < m.late + 0.05) h = 7 + Math.floor(rnd() * 2);
+          else { h = 9 + Math.floor(rnd() * 9); if (h === 12 && rnd() < 0.55) h = 13 + Math.floor(rnd() * 3); }
+        }
+        hours[h]++;
+      }
+      daily.push({ member: m.id, date: iso(t), mail_out, mail_in, slack_deal, slack_other, meetings, proposals, quotes, new_contacts, reply_n, reply_min, accounts: [...accounts], hours });
+    }
+  }
+  return { version: 1, generated_at: "2026-10-12T09:00:00+09:00", sample: true, members: members.map(({ id, name, team, target }) => ({ id, name, team, target })), daily };
+}
+
+// ---------- data model ----------
+const FIELDS = ["mail_out", "mail_in", "slack_deal", "slack_other", "meetings", "proposals", "quotes", "new_contacts", "reply_n", "reply_min"];
+function prepare(raw) {
+  if (!raw || !Array.isArray(raw.members) || !Array.isArray(raw.daily)) throw new Error("members と daily の配列が見つかりません。aggregate.py が出力した activity.json を選んでください。");
+  const members = raw.members.map((m) => ({ id: String(m.id), name: String(m.name ?? m.id), team: String(m.team ?? "未設定"), target: Number(m.target) > 0 ? Number(m.target) : 5 }));
+  const ids = new Set(members.map((m) => m.id));
+  const daily = [];
+  for (const r of raw.daily) {
+    if (!r || !ids.has(String(r.member)) || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue;
+    const t = parseIso(r.date);
+    const rec = { member: String(r.member), t, wd: new Date(t).getUTCDay() };
+    for (const f of FIELDS) rec[f] = Number(r[f]) || 0;
+    rec.accounts = Array.isArray(r.accounts) ? r.accounts.map(String) : [];
+    rec.hours = Array.isArray(r.hours) && r.hours.length === 24 ? r.hours.map((v) => Number(v) || 0) : null;
+    daily.push(rec);
+  }
+  if (!daily.length) throw new Error("daily に有効な行がありません（member が members に存在し、date が YYYY-MM-DD 形式か確認してください）。");
+  const maxT = Math.max(...daily.map((r) => r.t));
+  return { members, daily, maxT, sample: !!raw.sample };
+}
+
+function agg(recs) {
+  const s = { recs: recs.length, total: 0, off: 0, offKnown: 0 };
+  for (const f of FIELDS) s[f] = 0;
+  const acc = new Set();
+  for (const r of recs) {
+    for (const f of FIELDS) s[f] += r[f];
+    const tot = r.mail_out + r.slack_deal + r.slack_other;
+    s.total += tot;
+    for (const a of r.accounts) acc.add(r.member + "|" + a);
+    if (r.hours) {
+      s.offKnown += tot;
+      if (r.wd === 0 || r.wd === 6) s.off += tot;
+      else for (let h = 0; h < 24; h++) if (h < 9 || h >= 18) s.off += r.hours[h];
+    }
+  }
+  s.accounts = acc.size;
+  s.wins = s.proposals + s.quotes;
+  s.extRatio = s.total ? (s.mail_out + s.slack_deal) / s.total : NaN;
+  s.replyAvg = s.reply_n ? s.reply_min / s.reply_n : NaN;
+  s.m2p = s.meetings ? s.proposals / s.meetings : NaN;
+  s.offRatio = s.offKnown ? s.off / s.offKnown : NaN;
+  s.density = s.total ? ((s.meetings + s.proposals + s.quotes) / s.total) * 100 : NaN;
+  return s;
+}
+
+// ---------- state ----------
+const sampleRaw = generateSample();
+const state = { data: prepare(sampleRaw), weeks: 8, team: "all", member: "all", sort: { key: "total", dir: -1 }, sourceName: null };
+
+function windowOf(data, weeks, offsetWeeks = 0) {
+  const end = data.maxT - offsetWeeks * 7 * DAY;
+  return { start: end - (weeks * 7 - 1) * DAY, end };
+}
+function inScopeMembers() {
+  return state.data.members.filter((m) => (state.team === "all" || m.team === state.team) && (state.member === "all" || m.id === state.member));
+}
+function recsFor(memberIds, win) {
+  const set = new Set(memberIds);
+  return state.data.daily.filter((r) => set.has(r.member) && r.t >= win.start && r.t <= win.end);
+}
+function weekly(recs, win, weeks) {
+  const out = [];
+  for (let i = 0; i < weeks; i++) out.push({ start: win.start + i * 7 * DAY, end: win.start + (i * 7 + 6) * DAY, recs: [] });
+  for (const r of recs) { const i = Math.floor((r.t - win.start) / (7 * DAY)); if (out[i]) out[i].recs.push(r); }
+  return out.map((w) => ({ ...w, s: agg(w.recs) }));
+}
+
+// ---------- tooltip ----------
+const tipEl = $("#tooltip");
+const tips = new Map();
+let tipSeq = 0;
+function tip(obj) { const k = "t" + tipSeq++; tips.set(k, obj); return k; }
+function showTip(key, x, y) {
+  const t = tips.get(key);
+  if (!t) return hideTip();
+  tipEl.replaceChildren();
+  const title = document.createElement("div"); title.className = "tt-title"; title.textContent = t.title; tipEl.appendChild(title);
+  for (const row of t.rows) {
+    const r = document.createElement("div"); r.className = "tt-row";
+    const k = document.createElement("i"); k.className = "tt-key"; if (row.color) k.style.background = row.color;
+    const b = document.createElement("b"); b.textContent = row.value;
+    const sp = document.createElement("span"); sp.textContent = row.label;
+    r.append(k, b, sp); tipEl.appendChild(r);
+  }
+  tipEl.hidden = false;
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  let left = x + 14, top = y + 14;
+  if (left + w > window.innerWidth - 8) left = x - w - 14;
+  if (top + h > window.innerHeight - 8) top = y - h - 14;
+  tipEl.style.left = Math.max(8, left) + "px";
+  tipEl.style.top = Math.max(8, top) + "px";
+}
+function hideTip() { tipEl.hidden = true; document.querySelectorAll(".guide").forEach((g) => g.setAttribute("opacity", "0")); }
+document.addEventListener("pointermove", (e) => {
+  const el = e.target.closest && e.target.closest("[data-tip]");
+  if (!el) return hideTip();
+  const g = el.dataset.guide && el.ownerSVGElement && el.ownerSVGElement.querySelector(".guide");
+  document.querySelectorAll(".guide").forEach((x) => x !== g && x.setAttribute("opacity", "0"));
+  if (g) { g.setAttribute("x1", el.dataset.guide); g.setAttribute("x2", el.dataset.guide); g.setAttribute("opacity", "1"); }
+  showTip(el.dataset.tip, e.clientX, e.clientY);
+});
+document.addEventListener("focusin", (e) => {
+  const el = e.target.closest && e.target.closest("[data-tip]");
+  if (!el) return;
+  const b = el.getBoundingClientRect();
+  showTip(el.dataset.tip, b.right, b.top);
+});
+document.addEventListener("focusout", hideTip);
+window.addEventListener("scroll", hideTip, { passive: true });
+
+// ---------- chart helpers ----------
+const SERIES = { s1: "var(--s1)", s2: "var(--s2)", s3: "var(--s3)" };
+function topRounded(x, y, w, h, r) {
+  if (h <= 0) return "";
+  r = Math.min(r, h, w / 2);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function yAxis(m, iw, ih, max, fmt = fmtInt) {
+  let s = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = (max / 4) * i, y = m.t + ih - (v / max) * ih;
+    s += `<line class="${i ? "grid" : "axis"}" x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}"/>`;
+    s += `<text class="tick" x="${m.l - 6}" y="${y + 4}" text-anchor="end">${fmt(v)}</text>`;
+  }
+  return s;
+}
+function legend(el, items, kind = "rect") {
+  el.replaceChildren(...items.map(([label, color]) => {
+    const s = document.createElement("span"); const i = document.createElement("i");
+    if (kind === "line") i.className = "line";
+    i.style.background = color; s.append(i, document.createTextNode(label)); return s;
+  }));
+}
+function xLabelStep(n, iw) { return Math.max(1, Math.ceil(n / Math.max(1, Math.floor(iw / 52)))); }
+
+function chartVolume(el, wk) {
+  const keys = [["mail_out", "社外メール", SERIES.s1], ["slack_deal", "Slack（案件チャンネル）", SERIES.s2], ["slack_other", "Slack（社内）", SERIES.s3]];
+  legend($("#volLegend"), keys.map((k) => [k[1], k[2]]));
+  const W = Math.max(280, el.clientWidth), H = 230, m = { l: 44, r: 8, t: 10, b: 26 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b, n = wk.length, band = iw / n, bw = Math.min(34, band * 0.62);
+  const max = niceMax(Math.max(...wk.map((w) => w.s.total)));
+  let s = yAxis(m, iw, ih, max);
+  const step = xLabelStep(n, iw);
+  wk.forEach((w, i) => {
+    const x = m.l + band * i + (band - bw) / 2;
+    let y0 = m.t + ih;
+    const segs = keys.map((k) => ({ k, h: (w.s[k[0]] / max) * ih })).filter((g) => g.h > 0);
+    segs.forEach((g, j) => {
+      const top = j === segs.length - 1;
+      const gap = j > 0 ? 2 : 0;
+      const h = Math.max(0, g.h - gap);
+      const y = y0 - g.h;
+      s += top ? `<path class="mark" d="${topRounded(x, y, bw, h, 4)}" style="fill:${g.k[2]}"/>` : `<rect class="mark" x="${x}" y="${y}" width="${bw}" height="${h}" style="fill:${g.k[2]}"/>`;
+      y0 = y;
+    });
+    const t = tip({ title: `${md(w.start)}〜${md(w.end)} の週`, rows: [...keys].reverse().map((k) => ({ color: k[2], label: k[1], value: fmtInt(w.s[k[0]]) })).concat([{ label: "合計", value: fmtInt(w.s.total) }]) });
+    s += `<rect data-tip="${t}" tabindex="0" x="${m.l + band * i}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>`;
+    if (i % step === 0 || i === n - 1) s += `<text x="${m.l + band * i + band / 2}" y="${H - 8}" text-anchor="middle">${md(w.end)}</text>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="週次アクション量の積み上げ棒グラフ">${s}</svg>`;
+}
+
+function chartOutcome(el, wk) {
+  const keys = [["meetings", "商談・アポ", SERIES.s1], ["proposals", "提案", SERIES.s2], ["quotes", "見積", SERIES.s3]];
+  legend($("#outLegend"), keys.map((k) => [k[1], k[2]]), "line");
+  const W = Math.max(280, el.clientWidth), H = 230, m = { l: 36, r: 14, t: 10, b: 26 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b, n = wk.length;
+  const max = niceMax(Math.max(1, ...wk.flatMap((w) => keys.map((k) => w.s[k[0]]))));
+  const X = (i) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1));
+  const Y = (v) => m.t + ih - (v / max) * ih;
+  let s = yAxis(m, iw, ih, max);
+  s += `<line class="guide" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--fg-3)" stroke-width="1" opacity="0"/>`;
+  for (const k of keys) {
+    const pts = wk.map((w, i) => `${X(i).toFixed(1)},${Y(w.s[k[0]]).toFixed(1)}`).join(" ");
+    s += `<polyline points="${pts}" fill="none" style="stroke:${k[2]}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const last = wk[n - 1];
+    s += `<circle cx="${X(n - 1)}" cy="${Y(last.s[k[0]])}" r="4" style="fill:${k[2]};stroke:var(--surface)" stroke-width="2"/>`;
+  }
+  const step = xLabelStep(n, iw);
+  const half = n === 1 ? iw / 2 : iw / (n - 1) / 2;
+  wk.forEach((w, i) => {
+    const t = tip({ title: `${md(w.start)}〜${md(w.end)} の週`, rows: keys.map((k) => ({ color: k[2], label: k[1], value: fmtInt(w.s[k[0]]) })) });
+    s += `<rect data-tip="${t}" data-guide="${X(i)}" tabindex="0" x="${X(i) - half}" y="${m.t}" width="${half * 2}" height="${ih}" fill="transparent"/>`;
+    if (i % step === 0 || i === n - 1) s += `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${md(w.end)}</text>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="商談・提案・見積の週次推移">${s}</svg>`;
+}
+
+function chartEfficiency(el, rows, selected) {
+  const W = Math.max(280, el.clientWidth), H = 260, m = { l: 40, r: 86, t: 14, b: 34 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const pts = rows.filter((r) => isFinite(r.perWeek) && isFinite(r.s.density));
+  if (!pts.length) { el.innerHTML = `<div class="empty">データがありません</div>`; return; }
+  const xs = pts.map((p) => p.perWeek), ys = pts.map((p) => p.s.density);
+  const [x0, x1] = niceRange(Math.min(...xs), Math.max(...xs));
+  const yr = Math.max(...ys) - Math.min(...ys);
+  const y0 = Math.max(0, Math.floor((Math.min(...ys) - yr * 0.25 - 0.5))), yStep = Math.max(1, Math.ceil((Math.max(...ys) + yr * 0.25 + 0.5 - y0) / 4)), y1 = y0 + yStep * 4;
+  const X = (v) => m.l + ((v - x0) / (x1 - x0)) * iw, Y = (v) => m.t + ih - ((v - y0) / (y1 - y0)) * ih;
+  let s = "";
+  for (let i = 0; i <= 4; i++) {
+    const vy = y0 + yStep * i, y = Y(vy);
+    s += `<line class="${i ? "grid" : "axis"}" x1="${m.l}" x2="${m.l + iw}" y1="${y}" y2="${y}"/><text class="tick" x="${m.l - 6}" y="${y + 4}" text-anchor="end">${vy}</text>`;
+    const vx = x0 + ((x1 - x0) / 4) * i;
+    s += `<text class="tick" x="${X(vx)}" y="${m.t + ih + 16}" text-anchor="middle">${fmtInt(vx)}</text>`;
+  }
+  s += `<text x="${m.l + iw}" y="${H - 2}" text-anchor="end">アクション／週 →</text>`;
+  const mx = median(pts.map((p) => p.perWeek)), my = median(pts.map((p) => p.s.density));
+  if (pts.length > 2) {
+    s += `<line x1="${X(mx)}" x2="${X(mx)}" y1="${m.t}" y2="${m.t + ih}" stroke="var(--fg-3)" stroke-width="1" opacity="0.6"/>`;
+    s += `<line x1="${m.l}" x2="${m.l + iw}" y1="${Y(my)}" y2="${Y(my)}" stroke="var(--fg-3)" stroke-width="1" opacity="0.6"/>`;
+    s += `<text class="quad" x="${m.l + iw - 4}" y="${m.t + 12}" text-anchor="end">量も効率も高い</text>`;
+    s += `<text class="quad" x="${m.l + 6}" y="${m.t + 12}">少ない行動で成果</text>`;
+    s += `<text class="quad" x="${m.l + iw - 4}" y="${m.t + ih - 6}" text-anchor="end">量は多いが成果に遠い</text>`;
+    s += `<text class="quad" x="${m.l + 6}" y="${m.t + ih - 6}">量・効率とも伸びしろ</text>`;
+  }
+  // label placement: nudge to avoid vertical collisions
+  // 右→左→下へずらす順に、既に置いたラベルと重ならない位置を探す
+  const lab = pts.map((p) => ({ p, x: X(p.perWeek), y: Y(p.s.density), w: 12 * [...p.m.name].length + 4 })).sort((a, b) => a.y - b.y);
+  const boxes = lab.map((L) => ({ x0: L.x - 7, x1: L.x + 7, y0: L.y - 7, y1: L.y + 7 }));
+  const hit = (bx) => boxes.some((o) => bx.x0 < o.x1 && bx.x1 > o.x0 && bx.y0 < o.y1 && bx.y1 > o.y0);
+  for (const L of lab) {
+    const cands = [];
+    for (let dy = 0; dy <= 42; dy += 7) for (const sgn of dy ? [1, -1] : [1]) {
+      cands.push({ side: "r", ly: L.y + 4 + sgn * dy }, { side: "l", ly: L.y + 4 + sgn * dy });
+    }
+    let pick = cands[0], box;
+    for (const c of cands) {
+      const x0 = c.side === "r" ? L.x + 9 : L.x - 9 - L.w;
+      const bx = { x0, x1: x0 + L.w, y0: c.ly - 11, y1: c.ly + 2 };
+      if (bx.x0 >= m.l && bx.x1 <= W && !hit(bx)) { pick = c; box = bx; break; }
+    }
+    if (!box) { const x0 = L.x + 9; box = { x0, x1: x0 + L.w, y0: pick.ly - 11, y1: pick.ly + 2 }; }
+    boxes.push(box);
+    L.ly = pick.ly; L.lx = pick.side === "r" ? L.x + 9 : L.x - 9; L.anchor = pick.side === "r" ? "start" : "end";
+  }
+  for (const L of lab) {
+    const sel = selected === L.p.m.id;
+    const dim = selected !== "all" && !sel;
+    s += `<circle cx="${L.x}" cy="${L.y}" r="${sel ? 7 : 5.5}" style="fill:var(--s1);stroke:var(--surface)" stroke-width="2" opacity="${dim ? 0.35 : 1}"/>`;
+    s += `<text class="${sel ? "label-strong" : ""}" x="${L.lx}" y="${L.ly}" text-anchor="${L.anchor}" opacity="${dim ? 0.55 : 1}">${esc(L.p.m.name)}</text>`;
+    const t = tip({ title: `${L.p.m.name}（${L.p.m.team}）`, rows: [
+      { label: "アクション／週", value: fmtInt(L.p.perWeek) },
+      { label: "100アクションあたり成果", value: L.p.s.density.toFixed(1) },
+      { label: "商談・提案・見積", value: fmtInt(L.p.s.meetings + L.p.s.wins) },
+    ] });
+    s += `<circle data-tip="${t}" tabindex="0" cx="${L.x}" cy="${L.y}" r="13" fill="transparent"/>`;
+  }
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="メンバー別の行動量と成果密度の散布図">${s}</svg>`;
+}
+
+function chartHeat(el, recs) {
+  const H0 = 6, H1 = 23, cols = H1 - H0 + 1, order = [1, 2, 3, 4, 5, 6, 0];
+  const grid = order.map(() => Array(cols).fill(0));
+  let known = 0;
+  for (const r of recs) {
+    if (!r.hours) continue; known++;
+    const row = order.indexOf(r.wd);
+    for (let h = H0; h <= H1; h++) grid[row][h - H0] += r.hours[h];
+  }
+  if (!known) { el.innerHTML = `<div class="empty">時刻データ（hours）が含まれていません</div>`; $("#heatScale").replaceChildren(); return; }
+  const max = Math.max(1, ...grid.flat());
+  const steps = ["var(--q1)", "var(--q2)", "var(--q3)", "var(--q4)", "var(--q5)", "var(--q6)", "var(--q7)"];
+  const color = (v) => (v <= 0 ? "var(--q0)" : steps[Math.min(6, Math.floor((v / max) * 7))]);
+  const W = Math.max(280, el.clientWidth), m = { l: 24, r: 4, t: 4, b: 22 };
+  const cw = (W - m.l - m.r) / cols, ch = Math.min(26, Math.max(18, cw * 0.9)), H = m.t + ch * 7 + m.b;
+  let s = "";
+  order.forEach((wd, ri) => {
+    s += `<text x="${m.l - 8}" y="${m.t + ri * ch + ch / 2 + 4}" text-anchor="end">${WD[wd]}</text>`;
+    for (let c = 0; c < cols; c++) {
+      const v = grid[ri][c];
+      const t = tip({ title: `${WD[wd]}曜 ${H0 + c}時台`, rows: [{ label: "アクション", value: fmtInt(v) }] });
+      s += `<rect data-tip="${t}" class="mark" x="${m.l + c * cw + 1}" y="${m.t + ri * ch + 1}" width="${Math.max(0, cw - 2)}" height="${ch - 2}" rx="2" style="fill:${color(v)}"/>`;
+    }
+  });
+  const step = cw < 22 ? 3 : 2;
+  for (let c = 0; c < cols; c += step) s += `<text class="tick" x="${m.l + c * cw + cw / 2}" y="${H - 6}" text-anchor="middle">${H0 + c}</text>`;
+  s += `<line x1="${m.l + (9 - H0) * cw}" x2="${m.l + (9 - H0) * cw}" y1="${m.t}" y2="${m.t + ch * 5}" stroke="var(--fg)" stroke-width="1.5" opacity="0.55"/>`;
+  s += `<line x1="${m.l + (18 - H0) * cw}" x2="${m.l + (18 - H0) * cw}" y1="${m.t}" y2="${m.t + ch * 5}" stroke="var(--fg)" stroke-width="1.5" opacity="0.55"/>`;
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="曜日と時刻ごとの活動量ヒートマップ">${s}</svg>`;
+  const sc = $("#heatScale");
+  sc.replaceChildren();
+  sc.append("少");
+  for (const st of steps) { const i = document.createElement("i"); i.style.background = st; sc.append(i); }
+  sc.append(`多（最大 ${fmtInt(max)}件）　縦線＝平日9時・18時`);
+}
+
+function chartFunnel(el, s) {
+  const stages = [["新規接触", s.new_contacts, "var(--o1)"], ["商談・アポ", s.meetings, "var(--o2)"], ["提案", s.proposals, "var(--o3)"], ["見積", s.quotes, "var(--o4)"]];
+  const W = Math.max(280, el.clientWidth), lw = 78, rw = 110, bh = 26, gap = 10, H = stages.length * (bh + gap);
+  const iw = W - lw - rw, max = Math.max(1, ...stages.map((x) => x[1]));
+  let out = "";
+  stages.forEach(([name, v, c], i) => {
+    const y = i * (bh + gap), w = Math.max(2, (v / max) * iw);
+    const conv = i ? stages[i - 1][1] ? v / stages[i - 1][1] : NaN : null;
+    out += `<text x="0" y="${y + bh / 2 + 4}" class="label-strong">${name}</text>`;
+    out += `<path class="mark" d="M${lw},${y}H${lw + w - 4}Q${lw + w},${y} ${lw + w},${y + 4}V${y + bh - 4}Q${lw + w},${y + bh} ${lw + w - 4},${y + bh}H${lw}Z" style="fill:${c}"/>`;
+    out += `<text class="tick" x="${lw + w + 8}" y="${y + bh / 2 + 4}" style="fill:var(--fg)">${fmtInt(v)}</text>`;
+    if (conv !== null) out += `<text class="tick" x="${W}" y="${y + bh / 2 + 4}" text-anchor="end">前段比 ${fmtPct(conv)}</text>`;
+    const t = tip({ title: name, rows: [{ label: "件数", value: fmtInt(v) }].concat(conv !== null ? [{ label: "前段からの比率", value: fmtPct(conv) }] : []) });
+    out += `<rect data-tip="${t}" tabindex="0" x="0" y="${y - 2}" width="${W}" height="${bh + 4}" fill="transparent"/>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="新規接触から見積までの行動ファネル">${out}</svg>`;
+}
+
+function chartMix(el, s, prev) {
+  const parts = [["社外メール", s.mail_out, SERIES.s1], ["Slack（案件チャンネル）", s.slack_deal, SERIES.s2], ["Slack（社内）", s.slack_other, SERIES.s3]];
+  const W = Math.max(280, el.clientWidth), H = 150, bh = 30, total = Math.max(1, s.total);
+  let x = 0, out = "";
+  parts.forEach(([name, v, c], i) => {
+    const w = (v / total) * W;
+    const gw = Math.max(0, w - (i < parts.length - 1 ? 2 : 0));
+    const r = 4;
+    if (i === 0) out += `<path class="mark" d="M${x + r},0H${x + gw}V${bh}H${x + r}Q${x},${bh} ${x},${bh - r}V${r}Q${x},0 ${x + r},0Z" style="fill:${c}"/>`;
+    else if (i === parts.length - 1) out += `<path class="mark" d="M${x},0H${x + gw - r}Q${x + gw},0 ${x + gw},${r}V${bh - r}Q${x + gw},${bh} ${x + gw - r},${bh}H${x}Z" style="fill:${c}"/>`;
+    else out += `<rect class="mark" x="${x}" y="0" width="${gw}" height="${bh}" style="fill:${c}"/>`;
+    const t = tip({ title: name, rows: [{ color: c, label: "件数", value: fmtInt(v) }, { label: "構成比", value: fmtPct(v / total) }] });
+    out += `<rect data-tip="${t}" tabindex="0" x="${x}" y="0" width="${w}" height="${bh}" fill="transparent"/>`;
+    x += w;
+  });
+  const ext = s.extRatio, pext = prev.extRatio;
+  const rows = [
+    ["顧客向け（社外メール＋案件チャンネル）", fmtPct(ext), isFinite(pext) ? `前期間 ${fmtPct(pext)}` : ""],
+    ["社内向け（その他Slack）", fmtPct(1 - ext), ""],
+    ["1社あたりのアクション", isFinite(s.total / s.accounts) ? (s.total / s.accounts).toFixed(1) : "—", "件／接触社"],
+  ];
+  rows.forEach(([a, b, c], i) => {
+    const y = bh + 30 + i * 26;
+    out += `<text x="0" y="${y}">${a}</text><text class="tick" x="${W - 90}" y="${y}" text-anchor="end" style="fill:var(--fg);font-size:13px">${b}</text><text x="${W}" y="${y}" text-anchor="end">${c}</text>`;
+  });
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="顧客向けと社内向けのアクション比率">${out}</svg>`;
+  const lg = document.createElement("div"); lg.className = "legend"; legend(lg, parts.map((p) => [p[0], p[2]])); el.appendChild(lg);
+}
+
+function sparkline(vals) {
+  const w = 64, h = 18, max = Math.max(1, ...vals), n = vals.length;
+  const pts = vals.map((v, i) => `${((w - 4) * i) / Math.max(1, n - 1) + 2},${h - 2 - (v / max) * (h - 4)}`).join(" ");
+  const [lx, ly] = pts.split(" ").pop().split(",");
+  return `<svg class="spark" width="${w}" height="${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--s1)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="${lx}" cy="${ly}" r="2.2" fill="var(--s1)"/></svg>`;
+}
+
+// ---------- KPIs ----------
+function delta(cur, prev, { betterUp = true, pt = false } = {}) {
+  if (!isFinite(cur) || !isFinite(prev) || (prev === 0 && !pt)) return `<span class="delta flat">前期間比 —</span>`;
+  const d = pt ? (cur - prev) * 100 : ((cur - prev) / prev) * 100;
+  if (Math.abs(d) < 1) return `<span class="delta flat">前期間比 ±0${pt ? "pt" : "%"}</span>`;
+  const up = d > 0, cls = up ? (betterUp ? "up-good" : "up-bad") : (betterUp ? "down-bad" : "down-good");
+  return `<span class="delta ${cls}">${up ? "▲" : "▼"} ${up ? "+" : ""}${d.toFixed(0)}${pt ? "pt" : "%"} 前期間比</span>`;
+}
+function renderKpis(s, p, weeks) {
+  const items = [
+    ["総アクション", fmtInt(s.total), "件", delta(s.total, p.total), `週平均 ${fmtInt(s.total / weeks)}件`],
+    ["接触した顧客", fmtInt(s.accounts), "社", delta(s.accounts, p.accounts), `新規接触 ${fmtInt(s.new_contacts)}件`],
+    ["商談・アポ", fmtInt(s.meetings), "件", delta(s.meetings, p.meetings), `週平均 ${(s.meetings / weeks).toFixed(1)}件`],
+    ["提案・見積", fmtInt(s.wins), "件", delta(s.wins, p.wins), `商談→提案 ${fmtPct(s.m2p)}`],
+    ["平均初回返信", fmtMin(s.replyAvg), "", delta(s.replyAvg, p.replyAvg, { betterUp: false }), `顧客メール ${fmtInt(s.reply_n)}件に返信`],
+    ["顧客向け比率", fmtPct(s.extRatio), "", delta(s.extRatio, p.extRatio, { pt: true }), `時間外 ${fmtPct(s.offRatio)}`],
+  ];
+  $("#kpis").innerHTML = items.map(([l, v, u, d, h]) => `<div class="kpi"><span class="label">${l}</span><span class="value">${v}${u ? `<small>${u}</small>` : ""}</span>${d}<span class="hint">${h}</span></div>`).join("");
+}
+
+// ---------- member table ----------
+function goalStatus(rate) {
+  if (!isFinite(rate)) return ["warning", "目標未設定"];
+  if (rate >= 1) return ["good", "達成"];
+  if (rate >= 0.8) return ["warning", "あと少し"];
+  if (rate >= 0.6) return ["serious", "要対策"];
+  return ["critical", "要支援"];
+}
+const COLS = [
+  ["name", "メンバー"], ["total", "アクション／週"], ["accounts", "接触社数"], ["meetings", "商談"], ["goal", "商談目標"],
+  ["wins", "提案・見積"], ["m2p", "商談→提案"], ["replyAvg", "平均返信"], ["offRatio", "時間外"], ["extRatio", "顧客向け"],
+];
+function renderTable(rows, weeks) {
+  const { key, dir } = state.sort;
+  const val = (r) => key === "name" ? r.m.name : key === "goal" ? r.goal : key === "total" ? r.perWeek : r.s[key];
+  rows = [...rows].sort((a, b) => {
+    const va = val(a), vb = val(b);
+    if (typeof va === "string") return dir * va.localeCompare(vb, "ja");
+    return dir * ((isFinite(va) ? va : -Infinity) - (isFinite(vb) ? vb : -Infinity));
+  });
+  const head = `<thead><tr>${COLS.map(([k, l]) => `<th data-sort="${k}" tabindex="0" aria-sort="${k === key ? (dir < 0 ? "descending" : "ascending") : "none"}">${l}</th>`).join("")}</tr></thead>`;
+  const body = rows.map((r) => {
+    const [cls, lab] = goalStatus(r.goal);
+    return `<tr data-member="${esc(r.m.id)}" tabindex="0" class="${state.member === r.m.id ? "selected" : ""}">
+      <td class="name"><b>${esc(r.m.name)}</b><small>${esc(r.m.team)}</small></td>
+      <td>${fmtInt(r.perWeek)}${sparkline(r.wk.map((w) => w.s.total))}</td>
+      <td>${fmtInt(r.s.accounts)}</td>
+      <td>${fmtInt(r.s.meetings)}</td>
+      <td><span class="pill ${cls}">${lab}</span> ${fmtPct(r.goal)}</td>
+      <td>${fmtInt(r.s.wins)}</td>
+      <td>${fmtPct(r.s.m2p)}</td>
+      <td>${fmtMin(r.s.replyAvg)}</td>
+      <td>${fmtPct(r.s.offRatio)}</td>
+      <td>${fmtPct(r.s.extRatio)}</td>
+    </tr>`;
+  }).join("");
+  $("#memberTable").innerHTML = head + `<tbody>${body || `<tr><td colspan="${COLS.length}" class="empty">該当するメンバーがいません</td></tr>`}</tbody>`;
+}
+
+// ---------- insights ----------
+function buildInsights(rows, teamS) {
+  const out = [];
+  const teamReply = teamS.replyAvg, teamM2p = teamS.m2p, teamOff = teamS.offRatio, teamExt = teamS.extRatio;
+  for (const r of rows) {
+    const s = r.s, p = r.p, who = r.m.name;
+    if (r.goal >= 1) out.push({ lv: "good", who, t: `商談目標を達成（${fmtPct(r.goal)}）`, d: `期間内の商談は${fmtInt(s.meetings)}件、目標は週${r.m.target}件。`, a: "うまくいった接点の作り方（件名・時間帯・チャネル）をチームに共有する。", score: 1 });
+    else if (r.goal < 0.6) out.push({ lv: "critical", who, t: `商談目標の${fmtPct(r.goal)}にとどまる`, d: `商談${fmtInt(s.meetings)}件／目標${fmtInt(r.m.target * r.weeks)}件。新規接触は${fmtInt(s.new_contacts)}件。`, a: "1on1で詰まっている案件を洗い出し、アポ打診のテンプレートと送付先リストを一緒に見直す。", score: 5 });
+    if (isFinite(s.replyAvg) && isFinite(teamReply) && s.replyAvg > teamReply * 1.4 && s.replyAvg > 60) out.push({ lv: "serious", who, t: `初回返信が遅め（平均${fmtMin(s.replyAvg)}）`, d: `チーム平均は${fmtMin(teamReply)}。返信の遅れは商談化の遅れにつながりやすい。`, a: "午前・午後に1回ずつ受信トレイを処理する時間を予定に入れ、一次返信だけ先に返す。", score: 4 });
+    if (isFinite(s.m2p) && isFinite(teamM2p) && s.meetings >= 5 && s.m2p < teamM2p * 0.7) out.push({ lv: "serious", who, t: `商談から提案への転換率が${fmtPct(s.m2p)}`, d: `チーム平均は${fmtPct(teamM2p)}。商談はできているが、次のステップに進む割合が低い。`, a: "商談の最後に次回日程と提案内容の合意を取る。転換率の高いメンバーの商談に同席する。", score: 4 });
+    if (isFinite(s.offRatio) && s.offRatio > Math.max(0.2, teamOff * 1.5)) out.push({ lv: "warning", who, t: `時間外の活動が${fmtPct(s.offRatio)}`, d: `チーム全体は${fmtPct(teamOff)}。夕方以降のメール・Slackが多い。`, a: "社内調整や資料作成を日中に寄せる。送信予約を使い、顧客への送信は営業時間内にそろえる。", score: 3 });
+    if (isFinite(s.extRatio) && isFinite(teamExt) && s.extRatio < teamExt - 0.1) out.push({ lv: "warning", who, t: `顧客向けの比率が${fmtPct(s.extRatio)}`, d: `チーム全体は${fmtPct(teamExt)}。社内Slackに時間を使っている可能性がある。`, a: "社内の確認事項は1日1回にまとめて投げ、顧客接点の時間ブロックを先に確保する。", score: 3 });
+    if (p.total > 0) {
+      const ch = (s.total - p.total) / p.total;
+      if (ch <= -0.15) out.push({ lv: "warning", who, t: `アクション量が前期間比${Math.round(ch * 100)}%`, d: `${fmtInt(p.total)}件 → ${fmtInt(s.total)}件。`, a: "減った理由（大型案件対応・休暇・担当替え）を確認し、必要なら担当顧客を再配分する。", score: 2 });
+      else if (ch >= 0.15 && s.wins >= p.wins) out.push({ lv: "good", who, t: `アクション量が前期間比+${Math.round(ch * 100)}%、成果も維持`, d: `${fmtInt(p.total)}件 → ${fmtInt(s.total)}件、提案・見積 ${fmtInt(p.wins)} → ${fmtInt(s.wins)}件。`, a: "増えた行動のうち成果に効いたものを特定し、来期の標準にする。", score: 1 });
+    }
+  }
+  return out.sort((a, b) => b.score - a.score);
+}
+function renderInsights(list, scopeLabel) {
+  $("#insightScope").textContent = `${scopeLabel}：前の期間とチーム平均を比べて自動で抽出`;
+  const ul = $("#insights");
+  ul.replaceChildren();
+  if (!list.length) { const li = document.createElement("li"); li.className = "empty"; li.style.display = "block"; li.textContent = "目立った変化はありません。"; ul.appendChild(li); return; }
+  const labels = { good: "好調", warning: "注意", serious: "要対策", critical: "要支援" };
+  for (const it of list.slice(0, 8)) {
+    const li = document.createElement("li");
+    const pill = document.createElement("span"); pill.className = `pill ${it.lv}`; pill.textContent = labels[it.lv];
+    const body = document.createElement("div"); body.className = "body";
+    const who = document.createElement("span"); who.className = "who"; who.textContent = it.who;
+    const t = document.createElement("span"); t.className = "t"; t.textContent = it.t;
+    const d = document.createElement("span"); d.className = "d"; d.textContent = it.d;
+    const a = document.createElement("span"); a.className = "a"; a.textContent = it.a;
+    body.append(who, t, d, a);
+    li.append(pill, body);
+    ul.appendChild(li);
+  }
+}
+
+// ---------- KPT ----------
+let current = { insights: [], s: null, label: "", win: null };
+function kptKey() { return `kpt:${state.member}:${state.team}:${iso(current.win.end)}:${state.weeks}`; }
+let lastKptKey = null;
+function loadKpt() {
+  const key = kptKey();
+  if (key === lastKptKey) return;
+  lastKptKey = key;
+  for (const k of ["Keep", "Problem", "Try"]) $(`#kpt${k}`).value = store.get(`${kptKey()}:${k}`) || "";
+  $("#kptTry").placeholder = current.insights.length ? `例：${current.insights[0].a}` : "例：午前中に顧客メールの一次返信をまとめて返す";
+}
+for (const k of ["Keep", "Problem", "Try"]) $(`#kpt${k}`).addEventListener("input", (e) => store.set(`${kptKey()}:${k}`, e.target.value));
+$("#fillTryBtn").addEventListener("click", () => {
+  const tries = [...new Set(current.insights.filter((i) => i.lv !== "good").slice(0, 3).map((i) => `・${i.who}：${i.a}`))];
+  const el = $("#kptTry");
+  el.value = (el.value ? el.value.trimEnd() + "\n" : "") + (tries.join("\n") || "・好調な行動パターンを来期の標準にする");
+  store.set(`${kptKey()}:Try`, el.value);
+});
+$("#copyBtn").addEventListener("click", () => {
+  const s = current.s;
+  const lines = [
+    `*営業アクション振り返り｜${current.label}｜${md(current.win.start)}〜${md(current.win.end)}*`,
+    `アクション ${fmtInt(s.total)}件 ／ 接触 ${fmtInt(s.accounts)}社 ／ 商談 ${fmtInt(s.meetings)}件 ／ 提案・見積 ${fmtInt(s.wins)}件 ／ 平均返信 ${fmtMin(s.replyAvg)} ／ 顧客向け ${fmtPct(s.extRatio)}`,
+    "",
+    "*気づき*",
+    ...current.insights.slice(0, 5).map((i) => `・[${i.who}] ${i.t}`),
+    "",
+    `*Keep*\n${$("#kptKeep").value || "—"}`,
+    `*Problem*\n${$("#kptProblem").value || "—"}`,
+    `*Try*\n${$("#kptTry").value || "—"}`,
+  ];
+  const text = lines.join("\n");
+  const toast = $("#copyToast"), fb = $("#copyFallback");
+  const fallback = () => { fb.hidden = false; fb.value = text; fb.focus(); fb.select(); toast.textContent = "下の欄を選択済みです。Ctrl+C（⌘C）でコピーしてください"; };
+  try {
+    navigator.clipboard.writeText(text).then(() => { fb.hidden = true; toast.textContent = "コピーしました"; setTimeout(() => (toast.textContent = ""), 2500); }, fallback);
+  } catch (e) { fallback(); }
+});
+
+// ---------- render ----------
+function populateFilters() {
+  const teams = [...new Set(state.data.members.map((m) => m.team))];
+  const ts = $("#teamSel");
+  ts.replaceChildren(new Option("全チーム", "all"), ...teams.map((t) => new Option(t, t)));
+  ts.value = teams.includes(state.team) ? state.team : (state.team = "all");
+  populateMembers();
+}
+function populateMembers() {
+  const ms = state.data.members.filter((m) => state.team === "all" || m.team === state.team);
+  const sel = $("#memberSel");
+  sel.replaceChildren(new Option("全員", "all"), ...ms.map((m) => new Option(m.name, m.id)));
+  if (!ms.some((m) => m.id === state.member)) state.member = "all";
+  sel.value = state.member;
+}
+
+function render() {
+  tips.clear(); tipSeq = 0; hideTip();
+  const weeks = state.weeks;
+  const win = windowOf(state.data, weeks), pwin = windowOf(state.data, weeks, weeks);
+  $("#periodText").textContent = `${iso(win.start)} 〜 ${iso(win.end)}（比較：${md(pwin.start)}〜${md(pwin.end)}）`;
+  const scope = inScopeMembers();
+  const ids = scope.map((m) => m.id);
+  const recs = recsFor(ids, win), precs = recsFor(ids, pwin);
+  const s = agg(recs), p = agg(precs);
+  renderKpis(s, p, weeks);
+  const wk = weekly(recs, win, weeks);
+  chartVolume($("#volChart"), wk);
+  chartOutcome($("#outChart"), wk);
+  chartFunnel($("#funnelChart"), s);
+  chartMix($("#mixChart"), s, p);
+  chartHeat($("#heatChart"), recs);
+
+  // per-member rows: team scope (not narrowed by member) so the map/table keep context
+  const teamMembers = state.data.members.filter((m) => state.team === "all" || m.team === state.team);
+  const rows = teamMembers.map((m) => {
+    const r = recsFor([m.id], win);
+    const ms = agg(r);
+    return { m, s: ms, p: agg(recsFor([m.id], pwin)), wk: weekly(r, win, weeks), perWeek: ms.total / weeks, goal: ms.meetings / (m.target * weeks), weeks };
+  });
+  const teamS = agg(recsFor(teamMembers.map((m) => m.id), win));
+  chartEfficiency($("#effChart"), rows, state.member);
+  renderTable(rows, weeks);
+  const scopedRows = state.member === "all" ? rows : rows.filter((r) => r.m.id === state.member);
+  const label = state.member === "all" ? (state.team === "all" ? "全チーム" : state.team) : scope[0]?.name ?? "";
+  const insights = buildInsights(scopedRows, teamS);
+  renderInsights(insights, label);
+  current = { insights, s, label, win };
+  loadKpt();
+}
+
+// ---------- events ----------
+$("#periodSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-weeks]"); if (!b) return;
+  state.weeks = Number(b.dataset.weeks);
+  document.querySelectorAll("#periodSeg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  store.set("sa:weeks", String(state.weeks));
+  render();
+});
+$("#teamSel").addEventListener("change", (e) => { state.team = e.target.value; populateMembers(); render(); });
+$("#memberSel").addEventListener("change", (e) => { state.member = e.target.value; render(); });
+function selectRow(tr) {
+  const id = tr.dataset.member;
+  state.member = state.member === id ? "all" : id;
+  $("#memberSel").value = state.member;
+  render();
+}
+$("#memberTable").addEventListener("click", (e) => {
+  const th = e.target.closest("th[data-sort]");
+  if (th) {
+    const k = th.dataset.sort;
+    state.sort = state.sort.key === k ? { key: k, dir: -state.sort.dir } : { key: k, dir: k === "name" || k === "replyAvg" || k === "offRatio" ? 1 : -1 };
+    render(); return;
+  }
+  const tr = e.target.closest("tr[data-member]"); if (tr) selectRow(tr);
+});
+$("#memberTable").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const th = e.target.closest("th[data-sort]"); const tr = e.target.closest("tr[data-member]");
+  if (th || tr) { e.preventDefault(); e.target.click(); }
+});
+$("#fileIn").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const err = $("#loadError");
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      state.data = prepare(JSON.parse(reader.result));
+      state.member = "all"; state.team = "all"; state.sourceName = f.name;
+      $("#sourceText").textContent = `読み込みデータ：${f.name}（${state.data.members.length}名・〜${iso(state.data.maxT)}）`;
+      $("#resetBtn").hidden = false; err.hidden = true;
+      populateFilters(); render();
+    } catch (ex) {
+      err.textContent = `読み込めませんでした：${ex.message}`; err.hidden = false;
+    }
+    e.target.value = "";
+  };
+  reader.onerror = () => { err.textContent = "ファイルを読み取れませんでした。別のファイルで試してください。"; err.hidden = false; };
+  reader.readAsText(f);
+});
+$("#resetBtn").addEventListener("click", () => {
+  state.data = prepare(sampleRaw); state.member = "all"; state.team = "all"; state.sourceName = null;
+  $("#sourceText").textContent = "サンプルデータ（架空のメンバー）";
+  $("#resetBtn").hidden = true; $("#loadError").hidden = true;
+  populateFilters(); render();
+});
+
+const savedWeeks = Number(store.get("sa:weeks"));
+if ([4, 8, 12].includes(savedWeeks)) {
+  state.weeks = savedWeeks;
+  document.querySelectorAll("#periodSeg button").forEach((x) => x.setAttribute("aria-pressed", String(Number(x.dataset.weeks) === savedWeeks)));
+}
+populateFilters();
+render();
+let rt, lastW = $(".grid2").clientWidth;
+const ro = new ResizeObserver(() => {
+  const w = $(".grid2").clientWidth;
+  if (w === lastW) return;
+  lastW = w; clearTimeout(rt); rt = setTimeout(render, 120);
+});
+ro.observe($(".grid2"));
+})();
+</script>
